@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detektor Deepfake - Gambar, Video & Audio</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 2rem 3rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            color: #1a237e;
+            margin-bottom: 2rem;
+            font-size: 1.8rem;
+        }
+
+        #previewImage, #previewVideo, #audioVisualization {
+            max-width: 100%;
+            height: auto;
+            max-height: 300px;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            border: 2px dashed #ddd;
+            display: none;
+            background: #f9f9f9;
+        }
+
+        #audioVisualization {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .audio-icon {
+            font-size: 48px;
+            color: #3f51b5;
+            margin-bottom: 10px;
+        }
+
+        .audio-filename {
+            font-size: 14px;
+            color: #666;
+            word-break: break-all;
+        }
+
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            margin-bottom: 1rem;
+            margin-right: 10px;
+        }
+
+        .btn {
+            border: 2px solid #3f51b5;
+            color: #3f51b5;
+            background-color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-btn-wrapper .btn:hover {
+            background-color: #3f51b5;
+            color: white;
+        }
+
+        #predictButton, #predictVideoButton, #predictAudioButton {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: none;
+            margin: 5px;
+        }
+
+        #predictButton:hover, #predictVideoButton:hover, #predictAudioButton:hover {
+            background-color: #45a049;
+        }
+
+        #loader {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #3f51b5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin: 20px auto 0;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #resultContainer {
+            margin-top: 1.5rem;
+            font-size: 1.2rem;
+            padding: 1rem;
+            border-radius: 8px;
+            background: #f9f9f9;
+            display: none;
+        }
+
+        #resultText {
+            font-weight: bold;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        #confidenceText {
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+
+        #audioDetails {
+            color: #666;
+            font-size: 0.9rem;
+            text-align: left;
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .real {
+            color: #009688;
+        }
+
+        .fake {
+            color: #f44336;
+        }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .tab.active {
+            border-bottom: 3px solid #3f51b5;
+            color: #3f51b5;
+            font-weight: bold;
+        }
+
+        .file-info {
+            background: #f0f8ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .file-info span {
+            font-weight: bold;
+            color: #1a237e;
+        }
+
+        .feature-description {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .feature-description h3 {
+            color: #2e7d32;
+            margin-top: 0;
+        }
+
+        .waveform-container {
+            width: 100%;
+            height: 100px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Detektor Deepfake Multimodal 🤖🎤</h1>
+        
+        <div class="feature-description">
+            <h3>Fitur Deteksi:</h3>
+            <p><strong>• Gambar:</strong> Deteksi deepfake pada gambar wajah</p>
+            <p><strong>• Video:</strong> Analisis frame per frame untuk deteksi video deepfake</p>
+            <p><strong>• Audio:</strong> Deteksi suara buatan (AI-generated speech) vs suara manusia asli</p>
+        </div>
+
+        <div class="tab-container">
+            <button class="tab active" id="imageTab">Gambar</button>
+            <button class="tab" id="videoTab">Video</button>
+            <button class="tab" id="audioTab">Audio</button>
+        </div>
+
+        <!-- Tab Gambar -->
+        <div id="imageSection">
+            <img id="previewImage" src="#" alt="Pratinjau Gambar" />
+            
+            <div class="upload-btn-wrapper">
+                <button class="btn">📷 Pilih Gambar</button>
+                <input type="file" id="imageInput" accept="image/png, image/jpeg, image/jpg" />
+            </div>
+
+            <button id="predictButton">🔍 Deteksi Gambar!</button>
+        </div>
+
+        <!-- Tab Video -->
+        <div id="videoSection" style="display: none;">
+            <video id="previewVideo" controls style="display: none;"></video>
+            
+            <div class="upload-btn-wrapper">
+                <button class="btn">🎬 Pilih Video</button>
+                <input type="file" id="videoInput" accept="video/mp4, video/avi, video/mov" />
+            </div>
+
+            <button id="predictVideoButton">🔍 Deteksi Video!</button>
+        </div>
+
+        <!-- Tab Audio -->
+        <div id="audioSection" style="display: none;">
+            <div id="audioVisualization">
+                <div class="audio-icon">🎵</div>
+                <div id="audioFileName">Belum ada file audio dipilih</div>
+                <div class="waveform-container" id="waveformContainer"></div>
+            </div>
+            
+            <div class="upload-btn-wrapper">
+                <button class="btn">🎤 Pilih Audio</button>
+                <input type="file" id="audioInput" accept="audio/wav, audio/mp3, audio/m4a, audio/ogg" />
+            </div>
+
+            <div id="audioFileInfo" class="file-info" style="display: none;">
+                <div>📁 <span id="fileName">-</span></div>
+                <div>⏱️ Durasi: <span id="fileDuration">-</span> detik</div>
+                <div>📊 Format: <span id="fileFormat">-</span></div>
+            </div>
+
+            <button id="predictAudioButton">🔍 Deteksi Audio!</button>
+        </div>
+
+        <div id="loader"></div>
+
+        <div id="resultContainer">
+            <div id="resultText"></div>
+            <div id="confidenceText"></div>
+            <div id="audioDetails"></div>
+        </div>
+    </div>
+
+    <!-- Library untuk visualisasi waveform -->
+    <script src="https://unpkg.com/wavesurfer.js@7"></script>
+
+    <script>
+        // Elemen DOM
+        const imageTab = document.getElementById('imageTab');
+        const videoTab = document.getElementById('videoTab');
+        const audioTab = document.getElementById('audioTab');
+        const imageSection = document.getElementById('imageSection');
+        const videoSection = document.getElementById('videoSection');
+        const audioSection = document.getElementById('audioSection');
+        
+        const imageInput = document.getElementById('imageInput');
+        const videoInput = document.getElementById('videoInput');
+        const audioInput = document.getElementById('audioInput');
+        
+        const previewImage = document.getElementById('previewImage');
+        const previewVideo = document.getElementById('previewVideo');
+        const audioVisualization = document.getElementById('audioVisualization');
+        const audioFileName = document.getElementById('audioFileName');
+        const waveformContainer = document.getElementById('waveformContainer');
+        const audioFileInfo = document.getElementById('audioFileInfo');
+        
+        const predictButton = document.getElementById('predictButton');
+        const predictVideoButton = document.getElementById('predictVideoButton');
+        const predictAudioButton = document.getElementById('predictAudioButton');
+        
+        const loader = document.getElementById('loader');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultText = document.getElementById('resultText');
+        const confidenceText = document.getElementById('confidenceText');
+        const audioDetails = document.getElementById('audioDetails');
+
+        // Inisialisasi Wavesurfer untuk visualisasi audio
+        let wavesurfer = null;
+
+        // Tab functionality
+        imageTab.addEventListener('click', () => switchTab('image'));
+        videoTab.addEventListener('click', () => switchTab('video'));
+        audioTab.addEventListener('click', () => switchTab('audio'));
+
+        function switchTab(tab) {
+            // Reset semua tab
+            [imageTab, videoTab, audioTab].forEach(t => t.classList.remove('active'));
+            [imageSection, videoSection, audioSection].forEach(s => s.style.display = 'none');
+            
+            // Aktifkan tab yang dipilih
+            if (tab === 'image') {
+                imageTab.classList.add('active');
+                imageSection.style.display = 'block';
+            } else if (tab === 'video') {
+                videoTab.classList.add('active');
+                videoSection.style.display = 'block';
+            } else if (tab === 'audio') {
+                audioTab.classList.add('active');
+                audioSection.style.display = 'block';
+            }
+            
+            // Reset results ketika ganti tab
+            resultContainer.style.display = 'none';
+        }
+
+        // Image preview and prediction
+        imageInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    previewImage.src = e.target.result;
+                    previewImage.style.display = 'block';
+                    predictButton.style.display = 'inline-block';
+                    resultContainer.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Video preview
+        videoInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                previewVideo.src = URL.createObjectURL(file);
+                previewVideo.style.display = 'block';
+                predictVideoButton.style.display = 'inline-block';
+                resultContainer.style.display = 'none';
+            }
+        });
+
+        // Audio preview dan visualisasi
+        audioInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            // Tampilkan nama file
+            audioFileName.textContent = file.name;
+            audioVisualization.style.display = 'block';
+            predictAudioButton.style.display = 'inline-block';
+            resultContainer.style.display = 'none';
+
+            // Tampilkan info file
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileFormat').textContent = file.type;
+            audioFileInfo.style.display = 'block';
+
+            // Hapus wavesurfer lama jika ada
+            if (wavesurfer) {
+                wavesurfer.destroy();
+            }
+
+            // Inisialisasi wavesurfer baru
+            wavesurfer = WaveSurfer.create({
+                container: '#waveformContainer',
+                waveColor: '#3f51b5',
+                progressColor: '#ff4081',
+                cursorColor: '#333',
+                barWidth: 2,
+                barRadius: 3,
+                cursorWidth: 1,
+                height: 80,
+                barGap: 3,
+                responsive: true
+            });
+
+            // Load audio file
+            wavesurfer.load(URL.createObjectURL(file));
+
+            // Update durasi ketika audio siap
+            wavesurfer.on('ready', function () {
+                const duration = wavesurfer.getDuration();
+                document.getElementById('fileDuration').textContent = duration.toFixed(2);
+            });
+
+            // Tambahkan kontrol play/pause
+            wavesurfer.on('click', function () {
+                wavesurfer.playPause();
+            });
+        });
+
+        // Image prediction
+        predictButton.addEventListener('click', async function () {
+            await predict('image', imageInput.files[0]);
+        });
+
+        // Video prediction
+        predictVideoButton.addEventListener('click', async function () {
+            await predict('video', videoInput.files[0]);
+        });
+
+        // Audio prediction
+        predictAudioButton.addEventListener('click', async function () {
+            await predict('audio', audioInput.files[0]);
+        });
+
+        // Unified prediction function
+        async function predict(type, file) {
+            if (!file) {
+                alert(`Silakan pilih ${type} terlebih dahulu.`);
+                return;
+            }
+
+            loader.style.display = 'block';
+            if (type === 'image') {
+                predictButton.style.display = 'none';
+            } else if (type === 'video') {
+                predictVideoButton.style.display = 'none';
+            } else if (type === 'audio') {
+                predictAudioButton.style.display = 'none';
+                if (wavesurfer) {
+                    wavesurfer.pause();
+                }
+            }
+            
+            resultContainer.style.display = 'none';
+            audioDetails.innerHTML = '';
+
+            const formData = new FormData();
+            formData.append('type', type);
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResult(data.prediction, data.confidence, data.details, type);
+                } else {
+                    displayError(data.error);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                displayError('Gagal terhubung ke server. Coba lagi nanti.');
+            } finally {
+                loader.style.display = 'none';
+                if (type === 'image') {
+                    predictButton.style.display = 'inline-block';
+                } else if (type === 'video') {
+                    predictVideoButton.style.display = 'inline-block';
+                } else if (type === 'audio') {
+                    predictAudioButton.style.display = 'inline-block';
+                }
+            }
+        }
+
+        // Display result
+        function displayResult(prediction, confidence, details, type) {
+            resultText.innerText = prediction;
+            confidenceText.textContent = `Tingkat Keyakinan: ${confidence}`;
+
+            if (type === 'audio') {
+                if (details) {
+                    audioDetails.innerHTML = `
+                        <strong>Analisis Audio:</strong><br>
+                        ${details.analysis ? details.analysis : ''}
+                        ${details.audio_features ? `<br><br><strong>Fitur Audio:</strong><br>${details.audio_features}` : ''}
+                    `;
+                }
+                
+                // Untuk audio, kita tentukan kelas berdasarkan apakah itu "Real" atau "Fake"
+                if (prediction.includes('Real') || prediction.includes('Asli') || prediction.includes('Manusia')) {
+                    resultText.className = 'real';
+                } else if (prediction.includes('Fake') || prediction.includes('Buatan') || prediction.includes('AI')) {
+                    resultText.className = 'fake';
+                } else {
+                    // Fallback: cek confidence
+                    if (parseFloat(confidence) > 50) {
+                        resultText.className = 'real';
+                    } else {
+                        resultText.className = 'fake';
+                    }
+                }
+            } else {
+                // Untuk gambar dan video, gunakan logika lama
+                if (prediction.includes('Asli') || prediction.includes('Real')) {
+                    resultText.className = 'real';
+                } else {
+                    resultText.className = 'fake';
+                }
+            }
+
+            resultContainer.style.display = 'block';
+        }
+
+        function displayError(errorMessage) {
+            resultText.innerText = 'Error';
+            resultText.className = 'fake';
+            confidenceText.textContent = errorMessage;
+            resultContainer.style.display = 'block';
+        }
+
+        // Inisialisasi: default ke tab gambar
+        switchTab('image');
+    </script>
+</body>
+</html>
